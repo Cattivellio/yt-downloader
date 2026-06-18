@@ -33,6 +33,7 @@ class VideoInfo(BaseModel):
     type: Literal["video"] = "video"
     id: str
     title: str
+    platform: Literal["youtube", "instagram", "tiktok", "unknown"] = "youtube"
     channel: str
     duration: int
     duration_string: str
@@ -58,6 +59,7 @@ class PlaylistInfo(BaseModel):
     type: Literal["playlist"] = "playlist"
     id: str
     title: str
+    platform: Literal["youtube", "instagram", "tiktok", "unknown"] = "youtube"
     channel: str
     count: int
     entries: list[PlaylistEntry]

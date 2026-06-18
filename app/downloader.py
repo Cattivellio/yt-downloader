@@ -15,6 +15,18 @@ from .models import FormatInfo, PlaylistEntry, PlaylistInfo, VideoInfo
 
 QUALITY_TIERS = [1080, 720, 480, 360]
 AUDIO_BITRATES = [320, 192, 128, 96]
+AUDIO_BITRATES_SIMPLE = [192, 128]
+
+
+def _detect_platform(url: str) -> str:
+    url_lower = url.lower()
+    if re.search(r"youtube\.com|youtu\.be", url_lower):
+        return "youtube"
+    if re.search(r"instagram\.com", url_lower):
+        return "instagram"
+    if re.search(r"tiktok\.com", url_lower):
+        return "tiktok"
+    return "unknown"
 
 
 def _format_bytes(num: Optional[float]) -> Optional[str]:
@@ -148,6 +160,23 @@ def _build_video_formats(formats: list[dict], duration: Optional[int]) -> list[F
     return out
 
 
+def _build_video_simple(duration: Optional[int], platform: str) -> list[FormatInfo]:
+    size = None
+    if duration:
+        size = (2500 * 1000 / 8) * duration
+    label = "Best quality" if platform == "instagram" else "Best available"
+    return [
+        FormatInfo(
+            id="video_1080",
+            label=label,
+            ext="mp4",
+            size_estimate=_format_bytes(size),
+            note="Single best source",
+            has_audio=True,
+        )
+    ]
+
+
 def _build_audio_formats(duration: Optional[int], bitrates: list[int] = AUDIO_BITRATES) -> list[FormatInfo]:
     out: list[FormatInfo] = []
     for bitrate in bitrates:
@@ -178,6 +207,7 @@ def _build_audio_formats(duration: Optional[int], bitrates: list[int] = AUDIO_BI
 
 
 def get_info(url: str) -> VideoInfo | PlaylistInfo:
+    platform = _detect_platform(url)
     opts = _common_ydl_opts(TEMP_DIR, playlist_flat=False)
     opts["extract_flat"] = "in_playlist"
     with YoutubeDL(opts) as ydl:
@@ -210,6 +240,7 @@ def get_info(url: str) -> VideoInfo | PlaylistInfo:
         return PlaylistInfo(
             id=info.get("id") or "",
             title=info.get("title") or "Playlist",
+            platform=platform,
             channel=info.get("uploader") or info.get("channel") or "",
             count=len(entries),
             entries=entries,
@@ -223,9 +254,17 @@ def get_info(url: str) -> VideoInfo | PlaylistInfo:
     upload = info.get("upload_date")
     upload_str = f"{upload[6:8]}/{upload[4:6]}/{upload[0:4]}" if upload and len(upload) == 8 else None
 
+    if platform == "youtube":
+        video_fmts = _build_video_formats(formats, duration)
+        audio_fmts = _build_audio_formats(duration)
+    else:
+        video_fmts = _build_video_simple(duration, platform)
+        audio_fmts = _build_audio_formats(duration, AUDIO_BITRATES_SIMPLE)
+
     return VideoInfo(
         id=info.get("id") or "",
         title=info.get("title") or "Untitled",
+        platform=platform,
         channel=info.get("uploader") or info.get("channel") or "",
         duration=int(duration or 0),
         duration_string=_duration_to_str(duration),
@@ -233,8 +272,8 @@ def get_info(url: str) -> VideoInfo | PlaylistInfo:
         view_count=info.get("view_count"),
         upload_date=upload_str,
         webpage_url=info.get("webpage_url") or url,
-        video_formats=_build_video_formats(formats, duration),
-        audio_formats=_build_audio_formats(duration),
+        video_formats=video_fmts,
+        audio_formats=audio_fmts,
     )
 
 

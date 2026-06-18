@@ -1,18 +1,21 @@
 # YT Downloader
 
-A minimal, fast, local YouTube downloader. Paste a YouTube URL, pick MP4 or MP3, done.
+A minimal, fast, local video/audio downloader. Paste a YouTube, Instagram, or TikTok URL, pick a format, done.
 
 - **Backend:** FastAPI + yt-dlp
 - **Frontend:** vanilla HTML / CSS / JS (no build step)
 - **Style:** shadcn-inspired, light + dark mode
+- **Platforms:** YouTube, Instagram, TikTok
 
 ## Features
 
-- Single videos and playlists
-- Curated MP4 options (1080p, 720p, 480p, 360p — best available per tier)
+- YouTube (videos + playlists), Instagram (reels / posts), TikTok (videos)
+- Curated MP4 options per platform:
+  - YouTube: 1080p, 720p, 480p, 360p (best available per tier)
+  - Instagram / TikTok: best single source
 - Multiple MP3 bitrates (320, 192, 128, 96 kbps) extracted from the best audio source
 - **Share button** on every format — generates a one-click link that, when opened, auto-starts the download
-- Playlists: bulk-download chips in the header, per-card checkbox + remove (✕) button
+- Playlists: bulk-download chips in the header, per-card toggle + **Batch (zip)** mode
 - Live progress bar via Server-Sent Events
 - Dark mode (persists in `localStorage`)
 - No external CDN dependencies at runtime

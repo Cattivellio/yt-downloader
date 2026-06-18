@@ -28,12 +28,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="YouTube Downloader", lifespan=lifespan)
+app = FastAPI(title="YT Downloader", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
-_YT_URL_RE = re.compile(
-    r"(https?://)?(www\.|m\.)?(youtube\.com|youtu\.be)/.+$",
+_SUPPORTED_URL_RE = re.compile(
+    r"(https?://)?(www\.|m\.)?(youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vm\.tiktok\.com)/.+$",
     re.IGNORECASE,
 )
 
@@ -56,8 +56,8 @@ async def share(
     kind: str = Query("video", pattern="^(video|audio)$"),
     quality: Optional[int] = Query(None, ge=1, le=4320),
 ):
-    if not _YT_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid YouTube URL")
+    if not _SUPPORTED_URL_RE.match(url):
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
     label = _format_label(kind, quality)
     return templates.TemplateResponse(
         "share.html",
@@ -74,8 +74,8 @@ async def share(
 @app.post("/api/download-playlist")
 async def api_download_playlist(payload: PlaylistDownloadRequest):
     url = str(payload.url).strip()
-    if not _YT_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid YouTube URL")
+    if not _SUPPORTED_URL_RE.match(url):
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
     try:
         zip_path, zip_name = await manager.download_playlist(
             request_id=payload.request_id,
@@ -103,8 +103,8 @@ async def api_download_playlist(payload: PlaylistDownloadRequest):
 @app.post("/api/info", response_model=InfoResponse)
 async def api_info(payload: InfoRequest):
     url = str(payload.url).strip()
-    if not _YT_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid YouTube URL")
+    if not _SUPPORTED_URL_RE.match(url):
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
     try:
         info = await asyncio.get_running_loop().run_in_executor(None, get_info, url)
     except Exception as exc:  # noqa: BLE001
@@ -119,8 +119,8 @@ async def api_download(
     quality: Optional[int] = Query(None, ge=1, le=4320),
     request_id: str = Query(..., min_length=4, max_length=64),
 ):
-    if not _YT_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid YouTube URL")
+    if not _SUPPORTED_URL_RE.match(url):
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
 
     try:
         file_path, filename = await manager.download(

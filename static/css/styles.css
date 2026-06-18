@@ -451,6 +451,29 @@ input, select, textarea {
   color: var(--muted-foreground);
 }
 
+.badge-youtube {
+  background: hsl(0 70% 45%);
+  color: hsl(0 0% 100%);
+  border-color: transparent;
+}
+
+.badge-instagram {
+  background: linear-gradient(135deg, hsl(325 100% 55%), hsl(35 100% 55%));
+  color: hsl(0 0% 100%);
+  border-color: transparent;
+}
+
+.badge-tiktok {
+  background: hsl(0 0% 10%);
+  color: hsl(0 0% 100%);
+  border-color: transparent;
+}
+
+[data-theme="dark"] .badge-tiktok {
+  background: hsl(0 0% 90%);
+  color: hsl(0 0% 10%);
+}
+
 /* =====================================================================
    Format list
    ===================================================================== */

@@ -64,12 +64,27 @@
   };
 
   // ---------- URL detection ----------
-  const YT_RE = /^(https?:\/\/)?(www\.|m\.)?(youtube\.com|youtu\.be)\/.+/i;
-  const PLAYLIST_RE = /[?&]list=/i;
-  const detectUrlType = (url) => {
-    if (!YT_RE.test(url)) return { valid: false, type: "invalid" };
-    if (PLAYLIST_RE.test(url)) return { valid: true, type: "playlist" };
-    return { valid: true, type: "video" };
+  const SUPPORTED_RE = /^(https?:\/\/)?(www\.|m\.)?(youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vm\.tiktok\.com)\/.+/i;
+  const PL_RE = /[?&]list=/i;
+  const YT_RE = /youtube\.com|youtu\.be/i;
+  const IG_RE = /instagram\.com/i;
+  const TK_RE = /tiktok\.com/i;
+
+  const detectPlatform = (url) => {
+    if (!SUPPORTED_RE.test(url)) return { valid: false, platform: "invalid" };
+    if (YT_RE.test(url)) return { valid: true, platform: "youtube" };
+    if (IG_RE.test(url)) return { valid: true, platform: "instagram" };
+    if (TK_RE.test(url)) return { valid: true, platform: "tiktok" };
+    return { valid: false, platform: "invalid" };
+  };
+
+  const platformBadge = (platform) => {
+    switch (platform) {
+      case "youtube":  return "\u25B6 YouTube";
+      case "instagram": return "\u25CF Instagram";
+      case "tiktok":   return "\u266A TikTok";
+      default: return "";
+    }
   };
 
   // ---------- Helpers for format info ----------
@@ -154,15 +169,21 @@
       v.upload_date ? `<span class="badge">${escapeHtml(v.upload_date)}</span>` : "",
     ].filter(Boolean).join("");
 
+    const pl = v.platform || "youtube";
+    const platformClass = `badge badge-accent badge-platform badge-${pl}`;
+
     return `
-      <div class="card" data-info-type="video">
+      <div class="card" data-info-type="video" data-platform="${pl}">
         <div class="video-info">
           <div class="thumb">
             ${v.thumbnail ? `<img src="${escapeHtml(v.thumbnail)}" alt="" loading="lazy" />` : ""}
           </div>
           <div class="meta">
             <h2>${escapeHtml(v.title)}</h2>
-            <div class="channel">${escapeHtml(v.channel || "")}</div>
+            <div class="channel">
+              <span class="${platformClass}">${platformBadge(pl)}</span>
+              ${escapeHtml(v.channel || "")}
+            </div>
             <div class="stats">${stats}</div>
           </div>
         </div>
@@ -231,7 +252,7 @@
     `).join("");
 
     return `
-      <div class="card" data-info-type="playlist" data-playlist-url="${escapeHtml(p.webpage_url || '')}">
+      <div class="card" data-info-type="playlist" data-playlist-url="${escapeHtml(p.webpage_url || '')}" data-platform="${p.platform || 'youtube'}">
         <div class="card-section">
           <div class="playlist-header">
             <div>
@@ -382,8 +403,10 @@
 
   const fetchInfo = async (url) => {
     const root = resultsEl();
-    const detected = detectUrlType(url);
-    root.innerHTML = detected.type === "playlist" ? playlistSkeleton() : videoSkeleton();
+    const detected = detectPlatform(url);
+    root.innerHTML = detected.platform === "youtube"
+      ? (PL_RE.test(url) ? playlistSkeleton() : videoSkeleton())
+      : videoSkeleton();
 
     try {
       const res = await fetch("/api/info", {
@@ -968,16 +991,17 @@
 
     const refresh = () => {
       const val = input.value.trim();
-      const d = detectUrlType(val);
+      const d = detectPlatform(val);
       typeEl.classList.remove("visible");
       typeEl.textContent = "";
       if (!val) return;
       if (!d.valid) {
-        typeEl.textContent = "✕ invalid";
+        typeEl.textContent = "\u2715 invalid";
         typeEl.classList.add("visible");
         return;
       }
-      typeEl.textContent = d.type === "playlist" ? "▤ playlist" : "▣ video";
+      const pfx = d.platform === "youtube" && PL_RE.test(val) ? "\u25A4 playlist" : platformBadge(d.platform);
+      typeEl.textContent = pfx;
       typeEl.classList.add("visible");
     };
 
@@ -987,9 +1011,9 @@
     form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       const val = input.value.trim();
-      const d = detectUrlType(val);
+      const d = detectPlatform(val);
       if (!d.valid) {
-        toast("Please paste a valid YouTube URL", { error: true });
+        toast("Please paste a valid YouTube, Instagram, or TikTok URL", { error: true });
         input.focus();
         return;
       }
