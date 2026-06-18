@@ -33,7 +33,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 
 _SUPPORTED_URL_RE = re.compile(
-    r"(https?://)?(www\.|m\.)?(youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vm\.tiktok\.com)/.+$",
+    r"(https?://)?([\w-]+\.)?(youtube\.com|youtu\.be|instagram\.com|instagr\.am|[\w-]+\.tiktok\.com|tiktok\.com)/.+$",
     re.IGNORECASE,
 )
 

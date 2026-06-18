@@ -64,17 +64,18 @@
   };
 
   // ---------- URL detection ----------
-  const SUPPORTED_RE = /^(https?:\/\/)?(www\.|m\.)?(youtube\.com|youtu\.be|instagram\.com|tiktok\.com|vm\.tiktok\.com)\/.+/i;
+  const SUPPORTED_RE = /^(https?:\/\/)?([\w-]+\.)?(youtube\.com|youtu\.be|instagram\.com|instagr\.am|[\w-]+\.tiktok\.com|tiktok\.com)\/.+/i;
   const PL_RE = /[?&]list=/i;
   const YT_RE = /youtube\.com|youtu\.be/i;
-  const IG_RE = /instagram\.com/i;
+  const IG_RE = /instagram\.com|instagr\.am/i;
   const TK_RE = /tiktok\.com/i;
 
   const detectPlatform = (url) => {
-    if (!SUPPORTED_RE.test(url)) return { valid: false, platform: "invalid" };
-    if (YT_RE.test(url)) return { valid: true, platform: "youtube" };
-    if (IG_RE.test(url)) return { valid: true, platform: "instagram" };
-    if (TK_RE.test(url)) return { valid: true, platform: "tiktok" };
+    const clean = url.split("?")[0].split("#")[0].trim();
+    if (!SUPPORTED_RE.test(clean)) return { valid: false, platform: "invalid" };
+    if (YT_RE.test(clean)) return { valid: true, platform: "youtube" };
+    if (IG_RE.test(clean)) return { valid: true, platform: "instagram" };
+    if (TK_RE.test(clean)) return { valid: true, platform: "tiktok" };
     return { valid: false, platform: "invalid" };
   };
 
