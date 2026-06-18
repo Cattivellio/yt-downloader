@@ -20,10 +20,41 @@ A minimal, fast, local video/audio downloader. Paste a YouTube, Instagram, or Ti
 - Dark mode (persists in `localStorage`)
 - No external CDN dependencies at runtime
 
-## Requirements
+## Quick start
 
-- **Python 3.10+**
-- **FFmpeg** (must be on `PATH`)
+### Local (Python venv)
+
+Requirements: **Python 3.10+**, **FFmpeg**
+
+```bash
+git clone https://github.com/Cattivellio/yt-downloader.git
+cd yt-downloader
+chmod +x run.sh
+./run.sh
+```
+
+Then open <http://127.0.0.1:8000>.
+
+### Docker
+
+```bash
+git clone https://github.com/Cattivellio/yt-downloader.git
+cd yt-downloader
+docker compose up -d --build
+```
+
+Open <http://localhost:8200>.
+
+### Manual start
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### FFmpeg install
 
 ```bash
 # Debian / Ubuntu
@@ -36,31 +67,10 @@ brew install ffmpeg python3
 sudo dnf install ffmpeg python3
 ```
 
-## Quick start
-
-```bash
-cd ~/Documents/youtube-downloader
-chmod +x run.sh
-./run.sh
-```
-
-Then open <http://127.0.0.1:8000> in your browser.
-
-The first run creates a `.venv` and installs dependencies. Subsequent runs are instant.
-
-## Manual start
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
 ## Project layout
 
 ```
-youtube-downloader/
+yt-downloader/
 ├── app/
 │   ├── main.py            # FastAPI routes
 │   ├── downloader.py      # yt-dlp wrapper
@@ -69,7 +79,11 @@ youtube-downloader/
 ├── static/
 │   ├── css/styles.css     # shadcn-inspired design system
 │   └── js/{app.js, htmx.min.js}
-├── templates/index.html
+├── templates/
+│   ├── index.html
+│   └── share.html         # Shared download landing page
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
 ├── run.sh
 └── README.md
@@ -81,8 +95,9 @@ youtube-downloader/
 |---|---|---|
 | `GET`  | `/`                     | The web app |
 | `GET`  | `/share`                | Query `url`, `kind`, `quality`. Landing page that auto-triggers the download |
-| `POST` | `/api/info`             | Body `{url}`. Returns video or playlist metadata |
-| `GET`  | `/api/download`         | Query `url`, `kind=video|audio`, `quality` (video height or audio kbps), `request_id`. Streams the file |
+| `POST` | `/api/info`             | Body `{url}`. Returns video metadata + available formats |
+| `GET`  | `/api/download`         | Query `url`, `kind`, `quality`, `request_id`. Streams a single file |
+| `POST` | `/api/download-playlist`| Body `{url, kind, quality, request_id}`. Downloads all playlist videos, returns a zip |
 | `GET`  | `/api/progress`         | Server-Sent Events stream of download progress |
 | `GET`  | `/api/health`           | Liveness check |
 
@@ -99,17 +114,24 @@ When the recipient opens it, they see a small landing page and the download star
 ## Troubleshooting
 
 - **"Sign in to confirm you're not a bot"** — YouTube occasionally throttles unauthenticated requests. Update yt-dlp (`pip install -U yt-dlp`). If it persists, set `YT_COOKIE_FILE=/path/to/cookies.txt` before running.
+- **Instagram "empty media response"** — the post may require authentication. Use `--cookies-from-browser` or pass cookies via the `YT_COOKIE_FILE` env var.
+- **TikTok "IP blocked"** — your IP or VM IP may be rate-limited by TikTok. Try from a different connection or use a VPN.
 - **Audio/video out of sync or no audio** — Make sure `ffmpeg` is installed and on `PATH`. Run `ffmpeg -version` to verify.
 - **Slow first request** — yt-dlp fetches JS players on first run. Subsequent requests are fast.
 - **Format not available** — yt-dlp picks the best format for the requested tier. If 1080p isn't available for a video, you'll get the best it can do (e.g. 720p) and the row will reflect the actual resolution.
 
 ## Updating
 
-yt-dlp follows YouTube's changes. To stay current:
+yt-dlp follows platform changes. To stay current:
 
 ```bash
+# Local install
 source .venv/bin/activate
 pip install -U yt-dlp
+
+# Docker
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ## Notes
