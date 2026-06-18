@@ -1,6 +1,6 @@
-# YT Downloader
+# VidDown
 
-A minimal, fast, local video/audio downloader. Paste a YouTube, Instagram, or TikTok URL, pick a format, done.
+A minimal, fast, local video/audio downloader for YouTube, Instagram, and TikTok. Paste a link, pick a format, done.
 
 - **Backend:** FastAPI + yt-dlp
 - **Frontend:** vanilla HTML / CSS / JS (no build step)
