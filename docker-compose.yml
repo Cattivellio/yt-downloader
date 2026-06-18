@@ -1,0 +1,9 @@
+services:
+  yt-downloader:
+    build: .
+    container_name: yt-downloader
+    ports:
+      - "8200:8200"
+    environment:
+      - TZ=America/Caracas
+    restart: unless-stopped
