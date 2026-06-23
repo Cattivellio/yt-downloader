@@ -9,11 +9,14 @@ A minimal, fast, local video/audio downloader for YouTube, Instagram, TikTok, an
 
 ## Features
 
-- YouTube (videos + playlists), Instagram (reels / posts), TikTok (videos), Spotify (tracks, playlists, albums)
+- YouTube (videos + playlists), Instagram (reels / posts / **photo carousels**), TikTok (videos / **photo posts**), Spotify (tracks, playlists, albums)
 - Curated MP4 options per platform:
   - YouTube: 1080p, 720p, 480p, 360p (best available per tier)
   - Instagram / TikTok: best single source
 - Spotify: MP3 audio at 128 kbps (via YouTube source, with full Spotify metadata)
+- **Instagram photo posts & carousels**: images downloaded via gallery-dl, packaged as ZIP
+- **TikTok photo / slideshow posts**: the original sound (audio) is downloaded — the photos themselves are not exposed by TikTok's API
+- **TikTok Music track**: dedicated "MP3 · Music track" option for posts that expose the original sound
 - Multiple MP3 bitrates (320, 192, 128, 96 kbps) extracted from the best audio source
 - **Share button** on every format — generates a one-click link that, when opened, auto-starts the download
 - Playlists: bulk-download chips in the header, per-card toggle + **Batch (zip)** mode
@@ -76,6 +79,7 @@ yt-downloader/
 │   ├── main.py            # FastAPI routes
 │   ├── downloader.py      # yt-dlp wrapper
 │   ├── spotify.py         # spotDL v4 wrapper
+│   ├── gallery.py         # gallery-dl wrapper (image posts)
 │   ├── models.py          # Pydantic models
 │   └── config.py          # Settings
 ├── static/
@@ -119,6 +123,8 @@ When the recipient opens it, they see a small landing page and the download star
 - **Instagram "empty media response"** — the post may require authentication. Use `--cookies-from-browser` or pass cookies via the `YT_COOKIE_FILE` env var.
 - **TikTok "IP blocked"** — your IP or VM IP may be rate-limited by TikTok. Try from a different connection or use a VPN.
 - **Spotify download fails** — spotDL uses YouTube as a source. If the YouTube source is unavailable, try again later. For higher quality (256 kbps), set `SPOTDL_BITRATE=256k` (requires YouTube Music Premium).
+- **TikTok photo post only gives audio** — TikTok's API exposes only the music/sound for photo posts, not the actual photos. The app downloads the audio (the "Original sound") instead.
+- **Instagram image post fails** — Instagram heavily rate-limits unauthenticated requests. gallery-dl may need a logged-in sessionid cookie; set `YT_COOKIE_FILE=/path/to/cookies.txt` with a Netscape-format cookies file containing the `sessionid` value.
 - **Audio/video out of sync or no audio** — Make sure `ffmpeg` is installed and on `PATH`. Run `ffmpeg -version` to verify.
 - **Slow first request** — yt-dlp fetches JS players on first run. Subsequent requests are fast.
 - **Format not available** — yt-dlp picks the best format for the requested tier. If 1080p isn't available for a video, you'll get the best it can do (e.g. 720p) and the row will reflect the actual resolution.

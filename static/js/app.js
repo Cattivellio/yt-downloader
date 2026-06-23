@@ -175,6 +175,13 @@
 
     const pl = v.platform || "youtube";
     const platformClass = `badge badge-accent badge-platform badge-${pl}`;
+    const isAudioOnly = !!v.is_audio_only || v.content_kind === "audio";
+    const isImages = v.content_kind === "images";
+    const hint = isAudioOnly
+      ? `<div class="card-section hint-banner"><span>📷</span><span>Photo / slideshow post — only the original sound is downloadable.</span></div>`
+      : isImages
+        ? `<div class="card-section hint-banner"><span>🖼️</span><span>Photo post — ${v.image_count || 1} image${(v.image_count || 1) === 1 ? "" : "s"} will be downloaded.</span></div>`
+        : "";
 
     return `
       <div class="card" data-info-type="video" data-platform="${pl}">
@@ -191,6 +198,7 @@
             <div class="stats">${stats}</div>
           </div>
         </div>
+        ${hint}
         ${v.video_formats.length ? `
           <div class="card-section">
             <h3 class="card-title">Video · MP4</h3>

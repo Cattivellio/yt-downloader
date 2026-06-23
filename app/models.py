@@ -43,6 +43,9 @@ class VideoInfo(BaseModel):
     webpage_url: str
     video_formats: list[FormatInfo] = Field(default_factory=list)
     audio_formats: list[FormatInfo] = Field(default_factory=list)
+    content_kind: Literal["video", "audio", "images"] = "video"
+    image_count: int = 0
+    is_audio_only: bool = False
 
 
 class PlaylistEntry(BaseModel):

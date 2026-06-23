@@ -371,6 +371,22 @@ input, select, textarea {
   margin: 0 0 0.7rem;
 }
 
+.hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.hint-banner span:first-child {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 /* =====================================================================
    Video info block
    ===================================================================== */

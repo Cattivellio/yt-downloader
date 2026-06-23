@@ -18,6 +18,7 @@ from .config import BASE_DIR, TEMP_DIR
 from .downloader import get_info, manager
 from .models import InfoRequest, InfoResponse, PlaylistDownloadRequest
 from .spotify import parse_spotify_url, spotify_downloader
+from .gallery import gallery_downloader, is_instagram_url
 
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -39,6 +40,17 @@ _SUPPORTED_URL_RE = re.compile(
 )
 
 _SPOTIFY_RE = re.compile(r"open\.spotify\.com", re.IGNORECASE)
+_TIKTOK_PHOTO_RE = re.compile(
+    r"https?://(www\.)?tiktok\.com/@[^/]+/photo/\d+",
+    re.IGNORECASE,
+)
+
+
+def _normalize_url(url: str) -> str:
+    """Rewrite URLs that yt-dlp can't handle directly (TikTok photo posts)."""
+    if _TIKTOK_PHOTO_RE.match(url):
+        return re.sub(r"/photo/", "/video/", url)
+    return url
 
 
 def _format_label(kind: str, quality: Optional[int]) -> str:
@@ -127,7 +139,7 @@ async def api_download_playlist(payload: PlaylistDownloadRequest):
 
 @app.post("/api/info", response_model=InfoResponse)
 async def api_info(payload: InfoRequest):
-    url = str(payload.url).strip()
+    url = _normalize_url(str(payload.url).strip())
     if not _SUPPORTED_URL_RE.match(url):
         raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok / Spotify)")
     if _is_spotify(url):
@@ -139,6 +151,13 @@ async def api_info(payload: InfoRequest):
             return VideoInfo(**info)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Spotify info failed: {exc}") from exc
+    if is_instagram_url(url):
+        try:
+            info = await asyncio.get_running_loop().run_in_executor(None, gallery_downloader.get_info, url)
+            from .models import VideoInfo
+            return VideoInfo(**info)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Instagram info failed: {exc}") from exc
     try:
         info = await asyncio.get_running_loop().run_in_executor(None, get_info, url)
     except Exception as exc:  # noqa: BLE001
@@ -153,6 +172,7 @@ async def api_download(
     quality: Optional[int] = Query(None, ge=1, le=4320),
     request_id: str = Query(..., min_length=4, max_length=64),
 ):
+    url = _normalize_url(url.strip())
     if not _SUPPORTED_URL_RE.match(url):
         raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok / Spotify)")
     if _is_spotify(url):
@@ -188,6 +208,28 @@ async def api_download(
             media_type="application/octet-stream",
             filename=filename,
             background=BackgroundTask(_cleanup_spotify),
+        )
+
+    if is_instagram_url(url):
+        try:
+            file_path, filename = await asyncio.get_running_loop().run_in_executor(
+                None, gallery_downloader.download_images, url, TEMP_DIR / request_id
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Instagram download failed: {exc}") from exc
+
+        def _cleanup_gallery() -> None:
+            try:
+                shutil.rmtree(file_path.parent, ignore_errors=True)
+            except Exception:
+                pass
+
+        media_type = "application/zip" if filename.endswith(".zip") else "application/octet-stream"
+        return FileResponse(
+            path=str(file_path),
+            media_type=media_type,
+            filename=filename,
+            background=BackgroundTask(_cleanup_gallery),
         )
 
     try:

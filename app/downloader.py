@@ -256,12 +256,26 @@ def get_info(url: str) -> VideoInfo | PlaylistInfo:
     upload = info.get("upload_date")
     upload_str = f"{upload[6:8]}/{upload[4:6]}/{upload[0:4]}" if upload and len(upload) == 8 else None
 
-    if platform == "youtube":
+    is_audio_only = _is_audio_only_post(formats)
+    has_music_track = any(
+        "Music track" in (f.get("format_note") or "") or "music" in (f.get("url") or "").lower()
+        for f in formats
+    )
+
+    if is_audio_only:
+        # TikTok photo/slideshow post: only an audio format is available
+        video_fmts = []
+        audio_fmts = _build_audio_only_formats()
+    elif platform == "youtube":
         video_fmts = _build_video_formats(formats, duration)
         audio_fmts = _build_audio_formats(duration)
+        if platform == "tiktok" and has_music_track:
+            audio_fmts = _add_music_track_format(audio_fmts)
     else:
         video_fmts = _build_video_simple(duration, platform)
         audio_fmts = _build_audio_formats(duration, AUDIO_BITRATES_SIMPLE)
+        if platform == "tiktok" and has_music_track:
+            audio_fmts = _add_music_track_format(audio_fmts)
 
     return VideoInfo(
         id=info.get("id") or "",
@@ -276,7 +290,46 @@ def get_info(url: str) -> VideoInfo | PlaylistInfo:
         webpage_url=info.get("webpage_url") or url,
         video_formats=video_fmts,
         audio_formats=audio_fmts,
+        content_kind="audio" if is_audio_only else "video",
+        is_audio_only=is_audio_only,
     )
+
+
+def _is_audio_only_post(formats: list[dict]) -> bool:
+    """Detect a TikTok photo/slideshow post: single audio format, no video."""
+    if not formats:
+        return False
+    return all(f.get("vcodec") == "none" for f in formats)
+
+
+def _build_audio_only_formats() -> list[FormatInfo]:
+    return [
+        FormatInfo(
+            id="audio_track",
+            label="MP3 · Original sound",
+            ext="mp3",
+            size_estimate=None,
+            note="Photo/slideshow post · only audio available",
+            has_audio=True,
+            abr=None,
+        )
+    ]
+
+
+def _add_music_track_format(
+    audio_formats: list[FormatInfo],
+) -> list[FormatInfo]:
+    """Prepend a 'Music track' option for TikTok posts that expose one."""
+    music_fmt = FormatInfo(
+        id="audio_music",
+        label="MP3 · Music track",
+        ext="mp3",
+        size_estimate=None,
+        note="Original sound from the creator",
+        has_audio=True,
+        abr=None,
+    )
+    return [music_fmt, *audio_formats]
 
 
 class DownloadManager:
