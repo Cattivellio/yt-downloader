@@ -68,7 +68,7 @@
         <h1 id="title">Your friend is sharing a download with you</h1>
         <p class="sub">Format: <span id="format-label" class="badge badge-accent">{{ label }}</span></p>
         <div class="meta">
-          <span class="badge" id="type-badge">YouTube</span>
+          <span class="badge" id="type-badge">{{ label }}</span>
         </div>
         <div class="actions">
           <button id="dl-btn" class="btn btn-primary" type="button">Download now</button>
@@ -92,6 +92,9 @@
       if (isPlaylist) {
         typeBadge.textContent = "Playlist";
         titleEl.textContent = "Your friend is sharing a playlist with you";
+      } else if (/open\.spotify\.com/.test(url)) {
+        typeBadge.textContent = "Spotify";
+        titleEl.textContent = "Your friend is sharing a Spotify track with you";
       }
 
       const status = document.getElementById("status");

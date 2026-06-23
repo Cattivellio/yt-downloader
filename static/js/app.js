@@ -64,11 +64,12 @@
   };
 
   // ---------- URL detection ----------
-  const SUPPORTED_RE = /^(https?:\/\/)?([\w-]+\.)?(youtube\.com|youtu\.be|instagram\.com|instagr\.am|[\w-]+\.tiktok\.com|tiktok\.com)\/.+/i;
+  const SUPPORTED_RE = /^(https?:\/\/)?([\w-]+\.)?(youtube\.com|youtu\.be|instagram\.com|instagr\.am|[\w-]+\.tiktok\.com|tiktok\.com|open\.spotify\.com)\/.+/i;
   const PL_RE = /[?&]list=/i;
   const YT_RE = /youtube\.com|youtu\.be/i;
   const IG_RE = /instagram\.com|instagr\.am/i;
   const TK_RE = /tiktok\.com/i;
+  const SP_RE = /open\.spotify\.com/i;
 
   const detectPlatform = (url) => {
     const clean = url.split("?")[0].split("#")[0].trim();
@@ -76,6 +77,7 @@
     if (YT_RE.test(clean)) return { valid: true, platform: "youtube" };
     if (IG_RE.test(clean)) return { valid: true, platform: "instagram" };
     if (TK_RE.test(clean)) return { valid: true, platform: "tiktok" };
+    if (SP_RE.test(clean)) return { valid: true, platform: "spotify" };
     return { valid: false, platform: "invalid" };
   };
 
@@ -84,6 +86,7 @@
       case "youtube":  return "\u25B6 YouTube";
       case "instagram": return "\u25CF Instagram";
       case "tiktok":   return "\u266A TikTok";
+      case "spotify":  return "\u266B Spotify";
       default: return "";
     }
   };
@@ -1014,7 +1017,7 @@
       const val = input.value.trim();
       const d = detectPlatform(val);
       if (!d.valid) {
-        toast("Please paste a valid YouTube, Instagram, or TikTok URL", { error: true });
+        toast("Please paste a valid YouTube, Instagram, TikTok, or Spotify URL", { error: true });
         input.focus();
         return;
       }

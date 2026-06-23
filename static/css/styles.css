@@ -474,6 +474,17 @@ input, select, textarea {
   color: hsl(0 0% 10%);
 }
 
+.badge-spotify {
+  background: hsl(141 73% 53%);
+  color: hsl(0 0% 100%);
+  border-color: transparent;
+}
+
+[data-theme="dark"] .badge-spotify {
+  background: hsl(141 73% 53%);
+  color: hsl(0 0% 100%);
+}
+
 /* =====================================================================
    Format list
    ===================================================================== */

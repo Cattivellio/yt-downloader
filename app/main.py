@@ -17,6 +17,7 @@ from starlette.background import BackgroundTask
 from .config import BASE_DIR, TEMP_DIR
 from .downloader import get_info, manager
 from .models import InfoRequest, InfoResponse, PlaylistDownloadRequest
+from .spotify import parse_spotify_url, spotify_downloader
 
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -33,15 +34,21 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 
 _SUPPORTED_URL_RE = re.compile(
-    r"(https?://)?([\w-]+\.)?(youtube\.com|youtu\.be|instagram\.com|instagr\.am|[\w-]+\.tiktok\.com|tiktok\.com)/.+$",
+    r"(https?://)?([\w-]+\.)?(youtube\.com|youtu\.be|instagram\.com|instagr\.am|[\w-]+\.tiktok\.com|tiktok\.com|open\.spotify\.com)/.+$",
     re.IGNORECASE,
 )
+
+_SPOTIFY_RE = re.compile(r"open\.spotify\.com", re.IGNORECASE)
 
 
 def _format_label(kind: str, quality: Optional[int]) -> str:
     if kind == "audio":
-        return f"MP3 · {quality or 192} kbps"
+        return f"MP3 · {quality or 128} kbps"
     return f"MP4 · {quality or 1080}p"
+
+
+def _is_spotify(url: str) -> bool:
+    return bool(_SPOTIFY_RE.search(url))
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -57,7 +64,7 @@ async def share(
     quality: Optional[int] = Query(None, ge=1, le=4320),
 ):
     if not _SUPPORTED_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok / Spotify)")
     label = _format_label(kind, quality)
     return templates.TemplateResponse(
         "share.html",
@@ -75,7 +82,25 @@ async def share(
 async def api_download_playlist(payload: PlaylistDownloadRequest):
     url = str(payload.url).strip()
     if not _SUPPORTED_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok / Spotify)")
+    if _is_spotify(url):
+        try:
+            zip_path, zip_name = await asyncio.get_running_loop().run_in_executor(
+                None, spotify_downloader.download_playlist, url, TEMP_DIR / payload.request_id
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Spotify playlist download failed: {exc}") from exc
+        def _cleanup_spotify_pl() -> None:
+            try:
+                shutil.rmtree(zip_path.parent, ignore_errors=True)
+            except Exception:
+                pass
+        return FileResponse(
+            path=str(zip_path),
+            media_type="application/zip",
+            filename=zip_name,
+            background=BackgroundTask(_cleanup_spotify_pl),
+        )
     try:
         zip_path, zip_name = await manager.download_playlist(
             request_id=payload.request_id,
@@ -104,7 +129,16 @@ async def api_download_playlist(payload: PlaylistDownloadRequest):
 async def api_info(payload: InfoRequest):
     url = str(payload.url).strip()
     if not _SUPPORTED_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok / Spotify)")
+    if _is_spotify(url):
+        try:
+            info = await asyncio.get_running_loop().run_in_executor(None, spotify_downloader.get_info, url)
+            from .models import VideoInfo, PlaylistInfo
+            if info.get("type") == "playlist":
+                return PlaylistInfo(**info)
+            return VideoInfo(**info)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Spotify info failed: {exc}") from exc
     try:
         info = await asyncio.get_running_loop().run_in_executor(None, get_info, url)
     except Exception as exc:  # noqa: BLE001
@@ -120,7 +154,41 @@ async def api_download(
     request_id: str = Query(..., min_length=4, max_length=64),
 ):
     if not _SUPPORTED_URL_RE.match(url):
-        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok)")
+        raise HTTPException(status_code=400, detail="Not a valid URL (YouTube / Instagram / TikTok / Spotify)")
+    if _is_spotify(url):
+        try:
+            url_type, _spotify_id = parse_spotify_url(url)
+            if url_type in ("album", "playlist"):
+                zip_path, zip_name = await asyncio.get_running_loop().run_in_executor(
+                    None, spotify_downloader.download_playlist, url, TEMP_DIR / request_id
+                )
+                def _cleanup() -> None:
+                    try:
+                        shutil.rmtree(zip_path.parent, ignore_errors=True)
+                    except Exception:
+                        pass
+                return FileResponse(
+                    path=str(zip_path),
+                    media_type="application/zip",
+                    filename=zip_name,
+                    background=BackgroundTask(_cleanup),
+                )
+            file_path, filename = await asyncio.get_running_loop().run_in_executor(
+                None, spotify_downloader.download_track, url, TEMP_DIR / request_id
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Spotify download failed: {exc}") from exc
+        def _cleanup_spotify() -> None:
+            try:
+                shutil.rmtree(file_path.parent, ignore_errors=True)
+            except Exception:
+                pass
+        return FileResponse(
+            path=str(file_path),
+            media_type="application/octet-stream",
+            filename=filename,
+            background=BackgroundTask(_cleanup_spotify),
+        )
 
     try:
         file_path, filename = await manager.download(

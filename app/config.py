@@ -16,3 +16,18 @@ HOST = os.environ.get("YT_HOST", "127.0.0.1")
 PORT = int(os.environ.get("YT_PORT", "8000"))
 
 COOKIE_FILE = os.environ.get("YT_COOKIE_FILE")
+
+SPOTDL_BITRATE = os.environ.get("SPOTDL_BITRATE", "128k")
+
+# Spotify credentials — defaults are spotDL's bundled public credentials.
+# Override with your own app credentials via env vars if needed.
+try:
+    from spotdl.utils.config import SPOTIFY_OPTIONS as _SPOTIFY_OPTIONS
+    _DEFAULT_CLIENT_ID = _SPOTIFY_OPTIONS["client_id"]
+    _DEFAULT_CLIENT_SECRET = _SPOTIFY_OPTIONS["client_secret"]
+except (ImportError, KeyError):
+    _DEFAULT_CLIENT_ID = ""
+    _DEFAULT_CLIENT_SECRET = ""
+
+SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", _DEFAULT_CLIENT_ID)
+SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", _DEFAULT_CLIENT_SECRET)

@@ -26,6 +26,8 @@ def _detect_platform(url: str) -> str:
         return "instagram"
     if re.search(r"tiktok\.com", url_lower):
         return "tiktok"
+    if re.search(r"open\.spotify\.com", url_lower):
+        return "spotify"
     return "unknown"
 
 
